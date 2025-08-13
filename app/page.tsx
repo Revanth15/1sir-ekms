@@ -1,5 +1,6 @@
+'use client';
+
 import Scanner from "@/components/scanner";
-import Image from "next/image";
 
 export default function Home() {
   return (
