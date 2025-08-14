@@ -1,11 +1,19 @@
 'use client';
 
-import Scanner from "@/components/scanner";
+import LoadingScreen from "@/components/loading";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function Home() {
+  const router = useRouter()
+
+  useEffect(() => {
+      router.push("/scan")
+  }, [router])
+
   return (
-    <div className="flex items-center justify-center w-full h-screen bg-neutral-800">
-      <Scanner />
+    <div className="bg-neutral-800 min-h-screen">
+      <LoadingScreen/>
     </div>
   );
 }

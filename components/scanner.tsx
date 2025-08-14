@@ -67,14 +67,14 @@ const BarcodeScanner = () => {
               if (nricRegex.test(scannedText)) {
                 setNricResult(scannedText);
                 setScanStep('item');
-                toast.success("NRIC Scanned. Now scan the item barcode.");
+                toast.success("NRIC Scanned. Now scan the Key Barcode.");
               } else {
                 toast.warning("Not a valid NRIC. Please try again.");
               }
             } else if (scanStep === 'item') {
               setItemBarcode(scannedText);
               stopScan();
-              toast.success("Item barcode scanned successfully!");
+              toast.success("Key barcode scanned successfully!");
             }
           }
         } catch (err: any) {
@@ -193,7 +193,7 @@ const BarcodeScanner = () => {
         {scanning && (
           <div>
             <p className='text-sm font-medium text-center mb-2'>
-              {scanStep === 'nric' ? 'Scan NRIC Barcode' : 'Scan Item Barcode'}
+              {scanStep === 'nric' ? 'Scan NRIC Barcode' : 'Scan Key Barcode'}
             </p>
             <div className="relative overflow-hidden rounded-md border">
               <video id="video" className="w-full aspect-video" style={{ objectFit: 'cover' }} />
@@ -201,10 +201,10 @@ const BarcodeScanner = () => {
             {nricResult && scanStep === 'item' && (
               <div className='flex flex-col items-center mt-2'>
                 <p className="text-xs text-muted-foreground">Scanned NRIC: {nricResult}</p>
-                <Button onClick={handleRescanNric} variant="link" className="h-auto p-1 text-xs">
+                <Button onClick={handleRescanNric} className="h-auto p-1 text-xs">
                   Scan NRIC Again
                 </Button>
-              </div>
+              </div> 
             )}
           </div>
         )}
@@ -219,7 +219,7 @@ const BarcodeScanner = () => {
             </div>
             {itemBarcode && (
               <div>
-                <Label>Item Barcode</Label>
+                <Label>Key Barcode</Label>
                 <p className="text-lg font-mono">{itemBarcode}</p>
               </div>
             )}
