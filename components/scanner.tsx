@@ -13,8 +13,11 @@ interface VideoInputDevice {
   label: string;
   kind: string;
 }
+interface BarcodeScannerProps {
+  onSubmit: (nric: string, itemBarcode: string, action: "sign-in" | "sign-out") => void
+}
 
-const BarcodeScanner = () => {
+const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
   const [nricResult, setNricResult] = useState<string | null>(null);
   const [itemBarcode, setItemBarcode] = useState<string | null>(null);
   const [scanner, setScanner] = useState<BrowserBarcodeReader | null>(null);
@@ -147,6 +150,14 @@ const BarcodeScanner = () => {
     toast.info("Scan has been reset.");
   };
 
+  const handleSubmit = () => {
+    if (nricResult && itemBarcode) {
+      onSubmit(nricResult, itemBarcode, action)
+      // Reset scanner after submit
+      handleReset()
+    }
+  }
+
   return (
     <Card className={cn(
       "w-[350px] sm:w-[450px] md:w-[450px] lg:w-[450px] xl:w-[450px]",
@@ -245,7 +256,9 @@ const BarcodeScanner = () => {
                 </SelectContent>
               </Select>
             </div>
-            <Button className='w-full'>Submit</Button>
+            <Button onClick={handleSubmit} className="w-full">
+              Submit
+            </Button>
           </div>
         )}
       </CardContent>
