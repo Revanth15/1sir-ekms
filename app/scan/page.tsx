@@ -53,7 +53,7 @@ export default function ScannerPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6 min-h-screen bg-neutral-800">
       {/* <div className="text-center">
         <h1 className="text-3xl font-bold">Barcode Scanner</h1>
         <p className="text-muted-foreground mt-2">Scan NRIC and key barcodes to sign keys in/out</p>

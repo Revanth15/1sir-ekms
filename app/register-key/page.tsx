@@ -223,7 +223,7 @@ export default function Home() {
   const uniqueCompanies = Array.from(new Set(savedBarcodes.map((b) => b.company)))
 
   return (
-    <div className="min-h-screen bg-background p-4">
+    <div className="min-h-screen bg-neutral-800 p-4">
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
