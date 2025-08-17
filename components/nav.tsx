@@ -103,6 +103,16 @@ export default function Navigation() {
                         Register Keys
                         </Button>
                     </Link>
+                    <Link href="/scan" onClick={handleLinkClick}>
+                        <Button variant={pathname === "/scan" ? "secondary" : "ghost"} className={`w-full justify-start lg:w-auto ${pathname !== "/scan" ? "text-neutral-300 hover:bg-neutral-700 hover:text-white" : ""}`}>
+                        Scan
+                        </Button>
+                    </Link>
+                    <Link href="/logs" onClick={handleLinkClick}>
+                        <Button variant={pathname === "/logs" ? "secondary" : "ghost"} className={`w-full justify-start lg:w-auto ${pathname !== "/logs" ? "text-neutral-300 hover:bg-neutral-700 hover:text-white" : ""}`}>
+                        Logs
+                        </Button>
+                    </Link>
                     {/* <Link href="/sign-in-out" onClick={handleLinkClick}>
                         <Button variant={pathname === "/sign-in-out" ? "secondary" : "ghost"} className={`w-full justify-start lg:w-auto ${pathname !== "/sign-in-out" ? "text-neutral-300 hover:bg-neutral-700 hover:text-white" : ""}`}>
                         Sign In/Out Keys

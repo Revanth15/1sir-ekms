@@ -60,6 +60,33 @@ export const deleteSavedBarcode = async (id: string) => {
   }
 }
 
+export const getBarcodeByCode = async (barcodeCode: string): Promise<SavedBarcode | null> => {
+  try {
+    const q = query(collection(db, COLLECTION_NAME))
+    const querySnapshot = await getDocs(q)
+
+    const barcodeDoc = querySnapshot.docs.find((doc) => doc.data().barcodeCode === barcodeCode)
+
+    if (!barcodeDoc) {
+      return null
+    }
+
+    const data = barcodeDoc.data()
+    return {
+      id: barcodeDoc.id,
+      ...data,
+      createdAt: data.createdAt.toDate(),
+      noOfKeys: data.noOfKeys || "1",
+      lastUpdate: data.lastUpdate ? data.lastUpdate.toDate() : undefined,
+      lastReturn: data.lastReturn ? data.lastReturn.toDate() : undefined,
+      lastDraw: data.lastDraw ? data.lastDraw.toDate() : undefined,
+    } as SavedBarcode
+  } catch (error) {
+    console.error("Error getting barcode by code:", error)
+    throw error
+  }
+}
+
 export const updateBarcodeTimestamp = async (barcodeCode: string, action: "sign-in" | "sign-out") => {
   try {
     const q = query(collection(db, COLLECTION_NAME))

@@ -4,7 +4,8 @@ import { useState } from "react"
 import BarcodeScanner from "@/components/scanner"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
-import { updateBarcodeTimestamp } from "@/lib/barcode-service"
+import { updateBarcodeTimestamp, getBarcodeByCode } from "@/lib/barcode-service"
+import { logActivity, maskNric } from "@/lib/logging-service"
 
 export default function ScannerPage() {
   const [recentScans, setRecentScans] = useState<
@@ -18,15 +19,31 @@ export default function ScannerPage() {
 
   const handleScanSubmit = async (nric: string, itemBarcode: string, action: "sign-in" | "sign-out") => {
     try {
+      const barcodeData = await getBarcodeByCode(itemBarcode)
+      if (!barcodeData) {
+        toast.error("Barcode not found in system")
+        return
+      }
+
       await updateBarcodeTimestamp(itemBarcode, action)
 
+      await logActivity({
+        maskedNric: maskNric(nric),
+        barcodeCode: itemBarcode,
+        company: barcodeData.company,
+        location: barcodeData.location,
+        keyNo: barcodeData.keyNo,
+        action,
+        timestamp: new Date(),
+      })
+
       const newScan = {
-        nric,
+        nric: maskNric(nric),
         itemBarcode,
         action,
         timestamp: new Date(),
       }
-      setRecentScans((prev) => [newScan, ...prev.slice(0, 9)]) // Keep last 10 scans
+      setRecentScans((prev) => [newScan, ...prev.slice(0, 9)])
 
       toast.success(`Key ${action === "sign-in" ? "signed in" : "signed out"} successfully!`)
     } catch (error) {
