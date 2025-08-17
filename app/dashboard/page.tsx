@@ -103,7 +103,7 @@ export default function DashboardPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="text-center">
-        <h1 className="text-3xl font-bold">Key Management Dashboard</h1>
+        <h1 className="text-3xl font-bold">1 SIR Key Management Dashboard</h1>
         <p className="text-muted-foreground mt-2">Monitor all keys and their current status</p>
       </div>
 

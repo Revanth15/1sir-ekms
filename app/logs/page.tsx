@@ -68,10 +68,6 @@ export default function LogsPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold">Activity Logs</h1>
-        <p className="text-muted-foreground mt-2">Track all key sign-in and sign-out activities</p>
-      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

@@ -5,7 +5,7 @@ import BarcodeScanner from "@/components/scanner"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
 import { updateBarcodeTimestamp, getBarcodeByCode } from "@/lib/barcode-service"
-import { logActivity, maskNric } from "@/lib/logging-service"
+import { logActivity, maskNRIC } from "@/lib/logging-service"
 
 export default function ScannerPage() {
   const [recentScans, setRecentScans] = useState<
@@ -28,7 +28,7 @@ export default function ScannerPage() {
       await updateBarcodeTimestamp(itemBarcode, action)
 
       await logActivity({
-        maskedNric: maskNric(nric),
+        maskedNric: maskNRIC(nric),
         barcodeCode: itemBarcode,
         company: barcodeData.company,
         location: barcodeData.location,
@@ -38,7 +38,7 @@ export default function ScannerPage() {
       })
 
       const newScan = {
-        nric: maskNric(nric),
+        nric: maskNRIC(nric),
         itemBarcode,
         action,
         timestamp: new Date(),
@@ -54,10 +54,10 @@ export default function ScannerPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <div className="text-center">
+      {/* <div className="text-center">
         <h1 className="text-3xl font-bold">Barcode Scanner</h1>
         <p className="text-muted-foreground mt-2">Scan NRIC and key barcodes to sign keys in/out</p>
-      </div>
+      </div> */}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Scanner Section */}

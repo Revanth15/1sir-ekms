@@ -43,7 +43,7 @@ export const subscribeToLogs = (callback: (logs: ActivityLog[]) => void) => {
   })
 }
 
-export const maskNric = (nric: string): string => {
-  if (nric.length < 4) return nric
-  return nric.substring(0, 1) + "***" + nric.substring(nric.length - 1)
+export function maskNRIC(nric: string): string {
+    if (nric.length < 4) return '*****';
+    return '*****' + nric.slice(-4);
 }
