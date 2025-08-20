@@ -17,6 +17,7 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
   const [itemBarcode, setItemBarcode] = useState<string | null>(null);
   const [scanning, setScanning] = useState<boolean>(false);
   const [scanStep, setScanStep] = useState<'nric' | 'item'>('nric');
+  // const [scanStep, setScanStep] = useState<'nric' | 'item' | 'reset'>('nric');
   const [selectedCameraId, setSelectedCameraId] = useState<string>('');
   const [action, setAction] = useState<'sign-in' | 'sign-out'>('sign-in');
   let ScanbotSdkLocal: typeof ScanbotSDK;
@@ -48,6 +49,12 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
     let active = true;
     const nricRegex = /^[STFG]\d{7}[A-Z]$/;
 
+    // if (!result || result.items.length === 0) {
+    //   // User cancelled
+    //   onScannerCancel(); // <-- call your function here
+    //   return;
+    // }
+
     if (result && result.items.length > 0) {
       const scannedText = result.items[0].barcode.text;
       console.log(scanStep)
@@ -61,11 +68,19 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
         }
       } else if (scanStep === 'item') {
         setItemBarcode(scannedText);
+        setScanning(false);
         toast.success("Key barcode scanned successfully!");
       }
       // setScanResult(result.items[0].barcode.text);
     }
   }
+
+  // function onScannerCancel() {
+  //   setScanStep("reset")
+  //   setNricResult(null);
+  //   setItemBarcode(null);
+  //   // additional logic here
+  // }
 
   const reRunbarCodeScanner = async () => {
     const timer = setTimeout(() => {
@@ -103,7 +118,7 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
     setItemBarcode(null);
     setScanStep('item');
     setScanning(true);
-    // reRunbarCodeScanner();
+    reRunbarCodeScanner();
   };
   
   const handleReset = () => {
