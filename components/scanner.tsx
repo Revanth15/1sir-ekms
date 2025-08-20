@@ -28,7 +28,7 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
 
   async function loadSDK() {
     ScanbotSdkLocal = (await import('scanbot-web-sdk/ui')).default;
-
+    console.log("RESET") 
     let licencekey = process.env.LICENCEKEY || ""
     await ScanbotSdkLocal.initialize({
       licenseKey: licencekey,
@@ -55,6 +55,7 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
         if (nricRegex.test(scannedText)) {
           setNricResult(scannedText);
           setScanStep('item');
+          // startBarcodeScanner()
           toast.success("NRIC Scanned. Now scan the Key Barcode.");
         } else {
           toast.warning("Not a valid NRIC. Please try again.");
@@ -68,8 +69,13 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
   }
 
   useEffect(() => {
-    startBarcodeScanner()
-  }, [scanning, selectedCameraId, scanStep]);
+    const timer = setTimeout(() => {
+      loadSDK();
+      startBarcodeScanner();
+    }, 300); // 300ms delay
+
+    return () => clearTimeout(timer);
+  }, [scanStep]);
 
   const startScan = async () => {
     setNricResult(null);
