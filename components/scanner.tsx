@@ -50,12 +50,11 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
 
     if (result && result.items.length > 0) {
       const scannedText = result.items[0].barcode.text;
-
+      console.log(scanStep)
       if (scanStep === 'nric') {
         if (nricRegex.test(scannedText)) {
           setNricResult(scannedText);
           setScanStep('item');
-          // startBarcodeScanner()
           toast.success("NRIC Scanned. Now scan the Key Barcode.");
         } else {
           toast.warning("Not a valid NRIC. Please try again.");
@@ -68,13 +67,21 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
     }
   }
 
-  useEffect(() => {
+  const reRunbarCodeScanner = async () => {
     const timer = setTimeout(() => {
       loadSDK();
       startBarcodeScanner();
     }, 300); // 300ms delay
 
     return () => clearTimeout(timer);
+  }
+
+  useEffect(() => {
+    if (scanStep === 'nric' && !nricResult) {
+      reRunbarCodeScanner()
+    } else if (scanStep === 'item' && (!itemBarcode || nricResult)) {
+      reRunbarCodeScanner()
+    }
   }, [scanStep]);
 
   const startScan = async () => {
@@ -82,20 +89,21 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
     setItemBarcode(null);
     setScanStep('nric');
     setScanning(true);
-    startBarcodeScanner();
+    // reRunbarCodeScanner();
   };
   
   const handleRescanNric = () => {
     setNricResult(null);
     setScanStep('nric');
     toast.info("Please scan the NRIC again.");
+    // reRunbarCodeScanner();
   };
 
   const handleRescanItem = async () => {
-    // if (!selectedCameraId) { toast.error("Camera not selected."); return; }
     setItemBarcode(null);
     setScanStep('item');
     setScanning(true);
+    // reRunbarCodeScanner();
   };
   
   const handleReset = () => {
