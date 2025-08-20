@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from './ui/label';
 import { cn } from '@/lib/utils';
-import ScanbotSDK from "scanbot-web-sdk/ui";
+import type ScanbotSDK from "scanbot-web-sdk/ui";
 
 interface BarcodeScannerProps {
   onSubmit: (nric: string, itemBarcode: string, action: "sign-in" | "sign-out") => void
@@ -19,7 +19,7 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
   const [scanStep, setScanStep] = useState<'nric' | 'item'>('nric');
   const [selectedCameraId, setSelectedCameraId] = useState<string>('');
   const [action, setAction] = useState<'sign-in' | 'sign-out'>('sign-in');
-  let ScanbotSdk: typeof ScanbotSDK;
+  let ScanbotSdkLocal: typeof ScanbotSDK;
 
 
   useEffect(() => {
@@ -27,24 +27,24 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
   });
 
   async function loadSDK() {
-    ScanbotSdk = (await import('scanbot-web-sdk/ui')).default;
+    ScanbotSdkLocal = (await import('scanbot-web-sdk/ui')).default;
 
     let licencekey = process.env.LICENCEKEY || ""
-    await ScanbotSdk.initialize({
+    await ScanbotSdkLocal.initialize({
       licenseKey: licencekey,
       enginePath: "/wasm/",
     });
   }
 
   async function startBarcodeScanner() {
-    const config = new ScanbotSdk.UI.Config.BarcodeScannerScreenConfiguration()
-    const info = await ScanbotSDK.cameras.load("FAST")
+    const config = new ScanbotSdkLocal.UI.Config.BarcodeScannerScreenConfiguration()
+    const info = await ScanbotSdkLocal.cameras.load("FAST")
     console.log(info)
-    ScanbotSDK.cameras.getMainCamera("front")
+    ScanbotSdkLocal.cameras.getMainCamera("front")
 
     config.actionBar.flashButton
     
-    const result = await ScanbotSdk.UI.createBarcodeScanner(config);
+    const result = await ScanbotSdkLocal.UI.createBarcodeScanner(config);
     let active = true;
     const nricRegex = /^[STFG]\d{7}[A-Z]$/;
 
