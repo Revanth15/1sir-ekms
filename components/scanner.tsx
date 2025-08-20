@@ -1,12 +1,11 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BrowserBarcodeReader } from '@zxing/library';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from './ui/label';
-import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 
 interface VideoInputDevice {
@@ -14,6 +13,7 @@ interface VideoInputDevice {
   label: string;
   kind: string;
 }
+
 interface BarcodeScannerProps {
   onSubmit: (nric: string, itemBarcode: string, action: "sign-in" | "sign-out") => void
 }
@@ -27,8 +27,19 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
   const [videoDevices, setVideoDevices] = useState<VideoInputDevice[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>('');
   const [action, setAction] = useState<'sign-in' | 'sign-out'>('sign-in');
-  const [zoom, setZoom] = useState<number>(1);
-  const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
+  const [lastScanTime, setLastScanTime] = useState<number>(0);
+  const [scanAttempts, setScanAttempts] = useState<number>(0);
+  
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const animationFrameRef = useRef<number>(0);
+  const scanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Aggressive scanning configuration
+  const SCAN_INTERVAL = 100; // Scan every 100ms instead of continuous
+  const SCAN_TIMEOUT = 50; // Quick timeout for failed attempts
+  const MAX_SCAN_ATTEMPTS = 3; // Auto-retry failed scans
 
   useEffect(() => {
     const getVideoDevices = async () => {
@@ -42,6 +53,7 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
         }));
         setVideoDevices(videoInputs);
         if (videoInputs.length > 0) {
+          // Prioritize back camera for better barcode scanning
           const backCamera = videoInputs.find(device =>
             device.label.toLowerCase().includes('back') ||
             device.label.toLowerCase().includes('environment') ||
@@ -57,144 +69,230 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
     getVideoDevices();
   }, []);
 
-  // Apply zoom to video element
-  useEffect(() => {
-    if (videoElement && scanning) {
-      videoElement.style.transform = `scale(${zoom})`;
+  // High-performance continuous scanning like Scanbot
+  const continuousScan = useCallback(async () => {
+    if (!scanner || !videoRef.current || !canvasRef.current || !scanning) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx || video.readyState !== video.HAVE_ENOUGH_DATA) {
+      animationFrameRef.current = requestAnimationFrame(continuousScan);
+      return;
     }
-  }, [zoom, videoElement, scanning]);
 
-  useEffect(() => {
-    let active = true;
-    const nricRegex = /^[STFG]\d{7}[A-Z]$/;
+    // Set canvas size to match video
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
 
-    if (scanning && scanner && selectedCameraId) {
-      const decode = async () => {
-        try {
-          const res = await scanner.decodeFromInputVideoDevice(selectedCameraId, 'video');
-          if (active && res?.getText()) {
-            const scannedText = res.getText();
-            
-            if (scanStep === 'nric') {
-              if (nricRegex.test(scannedText)) {
-                setNricResult(scannedText);
-                setScanStep('item');
-                toast.success("NRIC Scanned. Now scan the Key Barcode.");
-              } else {
-                toast.warning("Not a valid NRIC. Please try again.");
-              }
-            } else if (scanStep === 'item') {
-              setItemBarcode(scannedText);
-              stopScan();
-              toast.success("Key barcode scanned successfully!");
-            }
+    // Draw current video frame to canvas
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    try {
+      // Get image data from canvas for faster processing
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      
+      // Convert ImageData to HTMLImageElement for ZXing
+      const imageCanvas = document.createElement('canvas');
+      imageCanvas.width = canvas.width;
+      imageCanvas.height = canvas.height;
+      const imageCtx = imageCanvas.getContext('2d');
+      if (imageCtx) {
+        imageCtx.putImageData(imageData, 0, 0);
+        const result = await scanner.decodeFromImage(undefined, imageCanvas.toDataURL());
+        
+        if (result?.getText()) {
+          const scannedText = result.getText();
+          const now = Date.now();
+          
+          // Prevent duplicate scans within 1 second
+          if (now - lastScanTime < 1000) {
+            animationFrameRef.current = requestAnimationFrame(continuousScan);
+            return;
           }
-        } catch (err: any) {
-          if (active && err?.name !== 'NotFoundException') {
-            console.error('Barcode decoding error:', err);
-            stopScan();
-          }
+          
+          setLastScanTime(now);
+          handleSuccessfulScan(scannedText);
+          return;
         }
-      };
-      decode();
+      }
+    } catch (err: any) {
+      // Silently continue on failed scans - this is normal
+      setScanAttempts(prev => prev + 1);
     }
 
-    return () => {
-      active = false;
-      if (scanner) {
-        scanner.reset();
+    // Continue scanning at high frequency
+    setTimeout(() => {
+      animationFrameRef.current = requestAnimationFrame(continuousScan);
+    }, SCAN_INTERVAL);
+  }, [scanner, scanning, lastScanTime, scanStep]);
+
+  const handleSuccessfulScan = (scannedText: string) => {
+    const nricRegex = /^[STFG]\d{7}[A-Z]$/;
+    
+    if (scanStep === 'nric') {
+      if (nricRegex.test(scannedText)) {
+        setNricResult(scannedText);
+        setScanStep('item');
+        setScanAttempts(0);
+        toast.success("NRIC Scanned! Now scan the key barcode.", {
+          duration: 2000,
+        });
+        // Brief pause before continuing to item scan
+        setTimeout(() => {
+          if (scanning) {
+            animationFrameRef.current = requestAnimationFrame(continuousScan);
+          }
+        }, 500);
+      } else {
+        toast.warning("Invalid NRIC format. Try again.", { duration: 1500 });
+        setTimeout(() => {
+          if (scanning) {
+            animationFrameRef.current = requestAnimationFrame(continuousScan);
+          }
+        }, 100);
       }
-    };
-  }, [scanner, scanning, selectedCameraId, scanStep]);
+    } else if (scanStep === 'item') {
+      setItemBarcode(scannedText);
+      stopScan();
+      toast.success("🎉 Key barcode scanned! Ready to submit.", {
+        duration: 3000,
+      });
+    }
+  };
 
   const startScan = async () => {
     if (!selectedCameraId) {
       toast.error("Please select a camera first");
       return;
     }
-    setNricResult(null);
-    setItemBarcode(null);
-    setScanStep('nric');
-    setZoom(1); // Reset zoom when starting new scan
-    const reader = new BrowserBarcodeReader();
-    setScanner(reader);
-    setScanning(true);
-    
-    // Get video element reference after a short delay to ensure it's rendered
-    setTimeout(() => {
-      const video = document.getElementById('video') as HTMLVideoElement;
-      setVideoElement(video);
-    }, 100);
+
+    try {
+      // Clean up any existing resources
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+
+      setNricResult(null);
+      setItemBarcode(null);
+      setScanStep('nric');
+      setScanAttempts(0);
+      setScanning(true);
+
+      // Get high-quality video stream with optimal settings for barcode scanning
+      const constraints = {
+        video: {
+          deviceId: { exact: selectedCameraId },
+          width: { ideal: 1920, min: 640 },
+          height: { ideal: 1080, min: 480 },
+          focusMode: { ideal: 'continuous' },
+          torch: false, // Disable torch initially
+          zoom: { ideal: 1.0 }
+        }
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await new Promise((resolve) => {
+          if (videoRef.current) {
+            videoRef.current.onloadedmetadata = resolve;
+          }
+        });
+      }
+
+      // Initialize high-performance scanner
+      const reader = new BrowserBarcodeReader();
+      setScanner(reader);
+      
+      // Start continuous scanning immediately
+      setTimeout(() => {
+        animationFrameRef.current = requestAnimationFrame(continuousScan);
+      }, 100);
+      
+      toast.success("Scanner ready! Position barcode in view.", {
+        duration: 2000,
+      });
+      
+    } catch (error) {
+      console.error("Error starting scan:", error);
+      toast.error("Failed to start camera. Check permissions.");
+      setScanning(false);
+    }
   };
 
   const stopScan = () => {
+    setScanning(false);
+    
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+    
+    if (scanTimeoutRef.current) {
+      clearTimeout(scanTimeoutRef.current);
+    }
+    
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    
     if (scanner) {
       scanner.reset();
     }
-    setScanning(false);
+    
     setScanner(null);
-    setVideoElement(null);
+    setScanAttempts(0);
   };
-  
+
   const handleCameraSelection = (cameraId: string) => {
     setSelectedCameraId(cameraId);
     if (scanning) {
       stopScan();
-      setTimeout(() => startScan(), 100);
+      setTimeout(() => startScan(), 200);
     }
   };
 
-  const handleRescanNric = () => {
-    setNricResult(null);
-    setScanStep('nric');
-    toast.info("Please scan the NRIC again.");
-  };
-
-  const handleRescanItem = async () => {
-    if (!selectedCameraId) { toast.error("Camera not selected."); return; }
-    setItemBarcode(null);
-    const reader = new BrowserBarcodeReader();
-    setScanner(reader);
-    setScanStep('item');
-    setScanning(true);
-    
-    // Get video element reference
-    setTimeout(() => {
-      const video = document.getElementById('video') as HTMLVideoElement;
-      setVideoElement(video);
-    }, 100);
-  };
-  
   const handleReset = () => {
     stopScan();
     setNricResult(null);
     setItemBarcode(null);
     setScanStep('nric');
-    setZoom(1);
-    toast.info("Scan has been reset.");
+    toast.info("Scanner reset. Ready for new scan.");
   };
 
   const handleSubmit = () => {
     if (nricResult && itemBarcode) {
-      onSubmit(nricResult, itemBarcode, action)
-      // Reset scanner after submit
-      handleReset()
+      onSubmit(nricResult, itemBarcode, action);
+      handleReset();
+      toast.success("Submission complete!");
     }
-  }
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopScan();
+    };
+  }, []);
 
   return (
-    <Card className={cn(
-      "w-[400px] sm:w-[500px] md:w-[600px] lg:w-[650px] xl:w-[700px]",
-      "max-w-[95%]"
-    )}>
-      <CardContent className="flex flex-col space-y-4 pt-6">
+    <Card className="w-full max-w-md mx-auto">
+      <CardContent className="p-6 space-y-4">
         {/* Camera Selection */}
         {!scanning && (
-          <div>
-            <Label htmlFor="camera-select">Select Camera</Label>
-            <Select onValueChange={handleCameraSelection} value={selectedCameraId} disabled={scanning}>
-              <SelectTrigger className="w-full mt-1">
-                <SelectValue placeholder="Choose a camera" />
+          <div className="space-y-2">
+            <Label>Camera</Label>
+            <Select onValueChange={handleCameraSelection} value={selectedCameraId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select camera" />
               </SelectTrigger>
               <SelectContent>
                 {videoDevices.map((device) => (
@@ -207,137 +305,110 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
           </div>
         )}
 
-        {/* --- Main Action Buttons --- */}
-        {!nricResult && !scanning && (
-          <Button onClick={startScan} disabled={!selectedCameraId}>
-            Start Scan
-          </Button>
-        )}
-        {scanning && (
-          <Button onClick={stopScan} variant="outline">
-            Stop Scan
-          </Button>
-        )}
-        {nricResult && !itemBarcode && (
-          <Button onClick={handleReset} variant="destructive" className="w-full">
-            Reset All
+        {/* Scan Controls */}
+        {!scanning && !nricResult && (
+          <Button onClick={startScan} disabled={!selectedCameraId} className="w-full">
+            Start High-Speed Scan
           </Button>
         )}
 
-        {/* --- SCANNING UI --- */}
         {scanning && (
-          <div className="space-y-4">
-            <p className='text-sm font-medium text-center'>
-              {scanStep === 'nric' ? 'Scan NRIC Barcode' : 'Scan Key Barcode'}
-            </p>
-            
-            {/* Zoom Control */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <Label className="text-sm">Zoom: {zoom.toFixed(1)}x</Label>
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setZoom(Math.max(0.5, zoom - 0.1))}
-                    disabled={zoom <= 0.5}
-                  >
-                    -
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setZoom(Math.min(3, zoom + 0.1))}
-                    disabled={zoom >= 3}
-                  >
-                    +
-                  </Button>
-                </div>
+          <div className="space-y-3">
+            <div className="text-center space-y-2">
+              <div className="text-lg font-semibold">
+                {scanStep === 'nric' ? 'Scan NRIC Barcode' : 'Scan Key Barcode'}
               </div>
-              <Slider
-                value={[zoom]}
-                onValueChange={(value: React.SetStateAction<number>[]) => setZoom(value[0])}
-                max={3}
-                min={0.5}
-                step={0.1}
-                className="w-full"
+              <div className="text-sm text-muted-foreground">
+                Scanning... {scanAttempts > 0 && `(${scanAttempts} attempts)`}
+              </div>
+            </div>
+
+            {/* High-Performance Video Preview */}
+            <div className="relative rounded-lg overflow-hidden bg-black">
+              <video
+                ref={videoRef}
+                className="w-full h-80 object-cover"
+                playsInline
+                muted
+                autoPlay
               />
-            </div>
-
-            {/* Enhanced Video Preview */}
-            <div className="relative overflow-hidden rounded-lg border-2 border-primary/20">
-              <div className="relative bg-black" style={{ height: '400px' }}>
-                <video 
-                  id="video" 
-                  className="w-full h-full object-cover transition-transform duration-200"
-                  style={{ 
-                    objectFit: 'cover',
-                    transformOrigin: 'center center'
-                  }} 
-                />
-                
-                {/* Scanning overlay with target area */}
-                <div className="absolute inset-0 pointer-events-none">
-                  {/* Scanning frame */}
-                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                    <div className="w-64 h-32 border-2 border-green-400 rounded-lg shadow-lg">
-                      <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-green-400 rounded-tl-lg"></div>
-                      <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-green-400 rounded-tr-lg"></div>
-                      <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-green-400 rounded-bl-lg"></div>
-                      <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-green-400 rounded-br-lg"></div>
-                    </div>
-                  </div>
-                  
-                  {/* Instructions overlay */}
-                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-3 py-1 rounded text-sm">
-                    Position barcode within the green frame
+              <canvas
+                ref={canvasRef}
+                className="hidden"
+              />
+              
+              {/* Minimal scanning indicator */}
+              <div className="absolute inset-0 pointer-events-none">
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                  <div className="w-48 h-24 border-2 border-red-500 rounded animate-pulse">
+                    {/* Just corner indicators - no visual clutter */}
+                    <div className="absolute -top-1 -left-1 w-4 h-4 border-t-4 border-l-4 border-red-500"></div>
+                    <div className="absolute -top-1 -right-1 w-4 h-4 border-t-4 border-r-4 border-red-500"></div>
+                    <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-4 border-l-4 border-red-500"></div>
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-4 border-r-4 border-red-500"></div>
                   </div>
                 </div>
               </div>
             </div>
+
+            <Button onClick={stopScan} variant="destructive" className="w-full">
+              Stop Scanning
+            </Button>
 
             {nricResult && scanStep === 'item' && (
-              <div className='flex flex-col items-center space-y-2 p-3 bg-muted rounded-lg'>
-                <p className="text-sm text-muted-foreground">✅ NRIC Scanned: {nricResult}</p>
-                <Button onClick={handleRescanNric} variant="outline" size="sm">
-                  Scan NRIC Again
-                </Button>
-              </div> 
+              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                <div className="text-sm text-green-700">
+                  ✅ NRIC: <span className="font-mono">{nricResult}</span>
+                </div>
+              </div>
             )}
           </div>
         )}
 
-        {/* --- RESULTS DISPLAY & POST-SCAN ACTIONS --- */}
+        {/* Results */}
         {nricResult && !scanning && (
-          <div className="rounded-lg bg-muted p-4 space-y-3">
-            <h4 className='font-semibold text-green-700'>✅ Scan Complete</h4>
+          <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+            <h3 className="font-semibold text-green-700">✅ Scan Results</h3>
+            
             <div className="space-y-2">
               <div>
-                <Label className="text-sm font-medium">NRIC</Label>
-                <p className="text-lg font-mono bg-white p-2 rounded border">{nricResult}</p>
+                <Label className="text-xs">NRIC</Label>
+                <div className="font-mono text-lg p-2 bg-white rounded border">
+                  {nricResult}
+                </div>
               </div>
+              
               {itemBarcode && (
                 <div>
-                  <Label className="text-sm font-medium">Key Barcode</Label>
-                  <p className="text-lg font-mono bg-white p-2 rounded border">{itemBarcode}</p>
+                  <Label className="text-xs">Key Barcode</Label>
+                  <div className="font-mono text-lg p-2 bg-white rounded border">
+                    {itemBarcode}
+                  </div>
                 </div>
               )}
             </div>
-            <div className="flex flex-col space-y-2 pt-3 border-t">
-              <Button onClick={startScan} variant="outline">Start New Scan (Reset All)</Button>
-              <Button onClick={handleRescanItem} variant="outline">Scan Item Again</Button>
+
+            <div className="flex gap-2">
+              <Button onClick={startScan} variant="outline" className="flex-1">
+                New Scan
+              </Button>
+              {!itemBarcode && (
+                <Button onClick={startScan} className="flex-1">
+                  Continue
+                </Button>
+              )}
             </div>
           </div>
         )}
-        
-        {/* --- FINAL SUBMIT FORM --- */}
+
+        {/* Submit Form */}
         {nricResult && itemBarcode && (
-          <div className="space-y-4 border-t pt-4">
+          <div className="space-y-4 pt-4 border-t">
             <div>
-              <Label htmlFor="action-select">Action</Label>
+              <Label>Action</Label>
               <Select onValueChange={(value) => setAction(value as 'sign-in' | 'sign-out')} value={action}>
-                <SelectTrigger className="w-full mt-1">
-                  <SelectValue placeholder="Select Action" />
+                <SelectTrigger>
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="sign-in">Sign Key In</SelectItem>
@@ -345,6 +416,7 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
                 </SelectContent>
               </Select>
             </div>
+            
             <Button onClick={handleSubmit} className="w-full bg-green-600 hover:bg-green-700">
               Submit
             </Button>
