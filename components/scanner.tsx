@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from './ui/label';
+import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 
 interface VideoInputDevice {
@@ -26,7 +27,8 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
   const [videoDevices, setVideoDevices] = useState<VideoInputDevice[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>('');
   const [action, setAction] = useState<'sign-in' | 'sign-out'>('sign-in');
-
+  const [zoom, setZoom] = useState<number>(1);
+  const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     const getVideoDevices = async () => {
@@ -54,6 +56,13 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
     };
     getVideoDevices();
   }, []);
+
+  // Apply zoom to video element
+  useEffect(() => {
+    if (videoElement && scanning) {
+      videoElement.style.transform = `scale(${zoom})`;
+    }
+  }, [zoom, videoElement, scanning]);
 
   useEffect(() => {
     let active = true;
@@ -106,9 +115,16 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
     setNricResult(null);
     setItemBarcode(null);
     setScanStep('nric');
+    setZoom(1); // Reset zoom when starting new scan
     const reader = new BrowserBarcodeReader();
     setScanner(reader);
     setScanning(true);
+    
+    // Get video element reference after a short delay to ensure it's rendered
+    setTimeout(() => {
+      const video = document.getElementById('video') as HTMLVideoElement;
+      setVideoElement(video);
+    }, 100);
   };
 
   const stopScan = () => {
@@ -117,6 +133,7 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
     }
     setScanning(false);
     setScanner(null);
+    setVideoElement(null);
   };
   
   const handleCameraSelection = (cameraId: string) => {
@@ -140,6 +157,12 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
     setScanner(reader);
     setScanStep('item');
     setScanning(true);
+    
+    // Get video element reference
+    setTimeout(() => {
+      const video = document.getElementById('video') as HTMLVideoElement;
+      setVideoElement(video);
+    }, 100);
   };
   
   const handleReset = () => {
@@ -147,6 +170,7 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
     setNricResult(null);
     setItemBarcode(null);
     setScanStep('nric');
+    setZoom(1);
     toast.info("Scan has been reset.");
   };
 
@@ -160,8 +184,8 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
 
   return (
     <Card className={cn(
-      "w-[350px] sm:w-[450px] md:w-[450px] lg:w-[450px] xl:w-[450px]",
-      "max-w-[90%]"
+      "w-[400px] sm:w-[500px] md:w-[600px] lg:w-[650px] xl:w-[700px]",
+      "max-w-[95%]"
     )}>
       <CardContent className="flex flex-col space-y-4 pt-6">
         {/* Camera Selection */}
@@ -202,17 +226,80 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
 
         {/* --- SCANNING UI --- */}
         {scanning && (
-          <div>
-            <p className='text-sm font-medium text-center mb-2'>
+          <div className="space-y-4">
+            <p className='text-sm font-medium text-center'>
               {scanStep === 'nric' ? 'Scan NRIC Barcode' : 'Scan Key Barcode'}
             </p>
-            <div className="relative overflow-hidden rounded-md border">
-              <video id="video" className="w-full aspect-video" style={{ objectFit: 'cover' }} />
+            
+            {/* Zoom Control */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <Label className="text-sm">Zoom: {zoom.toFixed(1)}x</Label>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setZoom(Math.max(0.5, zoom - 0.1))}
+                    disabled={zoom <= 0.5}
+                  >
+                    -
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setZoom(Math.min(3, zoom + 0.1))}
+                    disabled={zoom >= 3}
+                  >
+                    +
+                  </Button>
+                </div>
+              </div>
+              <Slider
+                value={[zoom]}
+                onValueChange={(value: React.SetStateAction<number>[]) => setZoom(value[0])}
+                max={3}
+                min={0.5}
+                step={0.1}
+                className="w-full"
+              />
             </div>
+
+            {/* Enhanced Video Preview */}
+            <div className="relative overflow-hidden rounded-lg border-2 border-primary/20">
+              <div className="relative bg-black" style={{ height: '400px' }}>
+                <video 
+                  id="video" 
+                  className="w-full h-full object-cover transition-transform duration-200"
+                  style={{ 
+                    objectFit: 'cover',
+                    transformOrigin: 'center center'
+                  }} 
+                />
+                
+                {/* Scanning overlay with target area */}
+                <div className="absolute inset-0 pointer-events-none">
+                  {/* Scanning frame */}
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                    <div className="w-64 h-32 border-2 border-green-400 rounded-lg shadow-lg">
+                      <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-green-400 rounded-tl-lg"></div>
+                      <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-green-400 rounded-tr-lg"></div>
+                      <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-green-400 rounded-bl-lg"></div>
+                      <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-green-400 rounded-br-lg"></div>
+                    </div>
+                  </div>
+                  
+                  {/* Instructions overlay */}
+                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-3 py-1 rounded text-sm">
+                    Position barcode within the green frame
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {nricResult && scanStep === 'item' && (
-              <div className='flex flex-col items-center mt-2'>
-                <p className="text-xs text-muted-foreground">Scanned NRIC: {nricResult}</p>
-                <Button onClick={handleRescanNric} className="h-auto p-1 text-xs">
+              <div className='flex flex-col items-center space-y-2 p-3 bg-muted rounded-lg'>
+                <p className="text-sm text-muted-foreground">✅ NRIC Scanned: {nricResult}</p>
+                <Button onClick={handleRescanNric} variant="outline" size="sm">
                   Scan NRIC Again
                 </Button>
               </div> 
@@ -222,20 +309,22 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
 
         {/* --- RESULTS DISPLAY & POST-SCAN ACTIONS --- */}
         {nricResult && !scanning && (
-          <div className="rounded-md bg-muted p-4 space-y-3">
-            <h4 className='font-semibold'>Scan Complete</h4>
-            <div>
-              <Label>NRIC</Label>
-              <p className="text-lg font-mono">{nricResult}</p>
-            </div>
-            {itemBarcode && (
+          <div className="rounded-lg bg-muted p-4 space-y-3">
+            <h4 className='font-semibold text-green-700'>✅ Scan Complete</h4>
+            <div className="space-y-2">
               <div>
-                <Label>Key Barcode</Label>
-                <p className="text-lg font-mono">{itemBarcode}</p>
+                <Label className="text-sm font-medium">NRIC</Label>
+                <p className="text-lg font-mono bg-white p-2 rounded border">{nricResult}</p>
               </div>
-            )}
-            <div className="flex flex-col space-y-2 pt-2 border-t">
-              <Button onClick={startScan}>Start New Scan (Reset All)</Button>
+              {itemBarcode && (
+                <div>
+                  <Label className="text-sm font-medium">Key Barcode</Label>
+                  <p className="text-lg font-mono bg-white p-2 rounded border">{itemBarcode}</p>
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col space-y-2 pt-3 border-t">
+              <Button onClick={startScan} variant="outline">Start New Scan (Reset All)</Button>
               <Button onClick={handleRescanItem} variant="outline">Scan Item Again</Button>
             </div>
           </div>
@@ -256,7 +345,7 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleSubmit} className="w-full">
+            <Button onClick={handleSubmit} className="w-full bg-green-600 hover:bg-green-700">
               Submit
             </Button>
           </div>
