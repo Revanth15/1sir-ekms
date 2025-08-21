@@ -39,7 +39,10 @@ export default function LogsPage() {
           log.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
           log.keyNo.includes(searchTerm) ||
           log.barcodeCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          log.maskedNric.toLowerCase().includes(searchTerm.toLowerCase()),
+          log.maskedNric.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          log.rank.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          log.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          log.number.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
 
@@ -154,6 +157,7 @@ export default function LogsPage() {
                   <TableHead>Location</TableHead>
                   <TableHead>Key No</TableHead>
                   <TableHead>Barcode</TableHead>
+                  <TableHead>Drawn Out By</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -183,6 +187,7 @@ export default function LogsPage() {
                     <TableCell>
                       <span className="font-mono text-xs">{log.barcodeCode}</span>
                     </TableCell>
+                    <TableCell>{`${log.rank} ${log.name} (${log.number})`}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

@@ -17,7 +17,7 @@ export default function ScannerPage() {
     }>
   >([])
 
-  const handleScanSubmit = async (nric: string, itemBarcode: string, action: "sign-in" | "sign-out") => {
+  const handleScanSubmit = async (nric: string, itemBarcode: string, action: "sign-in" | "sign-out", rank: string, name: string, number: string) => {
     try {
       const barcodeData = await getBarcodeByCode(itemBarcode)
       if (!barcodeData) {
@@ -34,6 +34,9 @@ export default function ScannerPage() {
         location: barcodeData.location,
         keyNo: barcodeData.keyNo,
         action,
+        rank: rank,
+        name: name,
+        number: number,
         timestamp: new Date(),
       })
 

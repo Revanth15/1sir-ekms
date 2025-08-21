@@ -9,6 +9,9 @@ export interface ActivityLog {
   location: string
   keyNo: string
   action: "sign-in" | "sign-out"
+  rank: string
+  name: string
+  number: string
   timestamp: Date
   createdAt: Date
 }

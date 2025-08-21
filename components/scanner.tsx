@@ -11,7 +11,7 @@ import { Input } from './ui/input';
 import { Checkbox } from './ui/checkbox';
 
 interface BarcodeScannerProps {
-  onSubmit: (nric: string, itemBarcode: string, action: "sign-in" | "sign-out") => void
+  onSubmit: (nric: string, itemBarcode: string, action: "sign-in" | "sign-out", rank: string, name: string, number: string) => void
 }
 
 const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
@@ -159,7 +159,7 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
         localStorage.setItem("scanner_rank", rank);
         localStorage.setItem("scanner_name", name);
       }
-      onSubmit(nricResult, itemBarcode, action)
+      onSubmit(nricResult, itemBarcode, action, rank, name, phone);
       // Reset scanner after submit
       handleReset()
     }
