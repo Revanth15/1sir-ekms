@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import type ScanbotSDK from "scanbot-web-sdk/ui";
 import { Input } from './ui/input';
 import { Checkbox } from './ui/checkbox';
+import RankCombobox from './rank-dropdown';
 
 interface BarcodeScannerProps {
   onSubmit: (nric: string, itemBarcode: string, action: "sign-in" | "sign-out", rank: string, name: string, number: string) => void
@@ -28,7 +29,6 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
   const [rank, setRank] = useState('');
   const [name, setName] = useState('');
   const [rememberDetails, setRememberDetails] = useState(false);
-
 
   useEffect(() => {
     loadSDK();
@@ -239,18 +239,10 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
             </div>
             <div>
               <Label htmlFor="rank">Rank</Label>
-              <Select onValueChange={setRank} value={rank}>
-                <SelectTrigger className="w-full mt-1">
-                  <SelectValue placeholder="Select Rank" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Private">Private</SelectItem>
-                  <SelectItem value="Corporal">Corporal</SelectItem>
-                  <SelectItem value="Sergeant">Sergeant</SelectItem>
-                  <SelectItem value="Lieutenant">Lieutenant</SelectItem>
-                  <SelectItem value="Captain">Captain</SelectItem>
-                </SelectContent>
-              </Select>
+              <RankCombobox
+                onRankSelect={setRank}
+                selectedRank={rank}
+              />
             </div>
 
             <div className="flex items-center space-x-2">
