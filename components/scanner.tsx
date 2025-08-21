@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from './ui/label';
 import { cn } from '@/lib/utils';
 import type ScanbotSDK from "scanbot-web-sdk/ui";
+import { Input } from './ui/input';
+import { Checkbox } from './ui/checkbox';
 
 interface BarcodeScannerProps {
   onSubmit: (nric: string, itemBarcode: string, action: "sign-in" | "sign-out") => void
@@ -22,10 +24,25 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
   const [action, setAction] = useState<'sign-in' | 'sign-out'>('sign-in');
   let ScanbotSdkLocal: typeof ScanbotSDK;
 
+  const [phone, setPhone] = useState('');
+  const [rank, setRank] = useState('');
+  const [name, setName] = useState('');
+  const [rememberDetails, setRememberDetails] = useState(false);
+
 
   useEffect(() => {
     loadSDK();
   });
+
+  useEffect(() => {
+    const savedPhone = localStorage.getItem("scanner_phone");
+    const savedRank = localStorage.getItem("scanner_rank");
+    const savedName = localStorage.getItem("scanner_name");
+
+    if (savedPhone) setPhone(savedPhone);
+    if (savedRank) setRank(savedRank);
+    if (savedName) setName(savedName);
+  }, []);
 
   async function loadSDK() {
     ScanbotSdkLocal = (await import('scanbot-web-sdk/ui')).default;
@@ -128,8 +145,20 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
     toast.info("Scan has been reset.");
   };
 
+  const handleResetUserFields = () => {
+    setPhone('');
+    setRank('');
+    setName('');
+    toast.info("User details reset (localStorage unchanged).");
+  };
+
   const handleSubmit = () => {
     if (nricResult && itemBarcode) {
+      if (rememberDetails) {
+        localStorage.setItem("scanner_phone", phone);
+        localStorage.setItem("scanner_rank", rank);
+        localStorage.setItem("scanner_name", name);
+      }
       onSubmit(nricResult, itemBarcode, action)
       // Reset scanner after submit
       handleReset()
@@ -198,7 +227,40 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
         
         {/* --- FINAL SUBMIT FORM --- */}
         {nricResult && itemBarcode && (
+          
           <div className="space-y-4 border-t pt-4">
+            <div>
+              <Label htmlFor="name">Name</Label>
+              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter name" />
+            </div>
+            <div>
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Enter phone number" />
+            </div>
+            <div>
+              <Label htmlFor="rank">Rank</Label>
+              <Select onValueChange={setRank} value={rank}>
+                <SelectTrigger className="w-full mt-1">
+                  <SelectValue placeholder="Select Rank" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Private">Private</SelectItem>
+                  <SelectItem value="Corporal">Corporal</SelectItem>
+                  <SelectItem value="Sergeant">Sergeant</SelectItem>
+                  <SelectItem value="Lieutenant">Lieutenant</SelectItem>
+                  <SelectItem value="Captain">Captain</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox id="remember" checked={rememberDetails} onCheckedChange={(v: any) => setRememberDetails(v)} />
+              <Label htmlFor="remember">Remember my details</Label>
+            </div>
+
+            <Button onClick={handleResetUserFields} variant="secondary" className="w-full">
+              Reset User Fields
+            </Button>
             <div>
               <Label htmlFor="action-select">Action</Label>
               <Select onValueChange={(value) => setAction(value as 'sign-in' | 'sign-out')} value={action}>
