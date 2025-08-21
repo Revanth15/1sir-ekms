@@ -241,9 +241,12 @@ export default function Home() {
                         <SelectValue placeholder="Select company" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="SP">SP</SelectItem>
                         <SelectItem value="A">A</SelectItem>
                         <SelectItem value="B">B</SelectItem>
+                        <SelectItem value="C">C</SelectItem>
+                        <SelectItem value="SP">SP</SelectItem>
+                        <SelectItem value="MSC">MSC</SelectItem>
+                        <SelectItem value="HQ">HQ</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

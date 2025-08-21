@@ -16,29 +16,46 @@ import { Button } from "@/components/ui/button";
 
 const ranks = [
   "PTE",
-  "OCT",
-  "MID",
+  "LCP",
+  "CPL",
+  "CFC",
   "SCT",
-  "ME4T",
   "3SG",
   "2SG",
   "1SG",
+  "SSG",
   "MSG",
   "3WO",
   "2WO",
   "1WO",
+  "MWO",
+  "SWO",
+  "CWO",
+  "OCT",
   "2LT",
   "LTA",
   "CPT",
+  "MID",
   "MAJ",
   "LTC",
   "SLTC",
   "COL",
-  "ME4",
+  "BG",
+  "MG",
+  "LG",
+  "ME1(T)",
+  "ME1",
+  "ME2",
+  "ME3",
+  "ME4T",
   "ME4A",
+  "ME4",
   "ME5",
   "ME6",
   "ME7",
+  "ME8",
+  "ME9",
+  "OTHERS"
 ];
 
 interface RankComboboxProps {
@@ -56,7 +73,7 @@ interface RankComboboxProps {
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-[100px] justify-between"
+            className="w-full justify-between"
           >
             {selectedRank
               ? ranks.find((rank) => rank === selectedRank)

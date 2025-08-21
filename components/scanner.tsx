@@ -18,6 +18,8 @@ interface BarcodeScannerProps {
 const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
   const [nricResult, setNricResult] = useState<string | null>(null);
   const [itemBarcode, setItemBarcode] = useState<string | null>(null);
+  // const [nricResult, setNricResult] = useState<string | null>("as");
+  // const [itemBarcode, setItemBarcode] = useState<string | null>("as");
   const [scanning, setScanning] = useState<boolean>(false);
   const [scanStep, setScanStep] = useState<'nric' | 'item'>('nric');
   // const [scanStep, setScanStep] = useState<'nric' | 'item' | 'reset'>('nric');
@@ -229,14 +231,7 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
         {nricResult && itemBarcode && (
           
           <div className="space-y-4 border-t pt-4">
-            <div>
-              <Label htmlFor="name">Name</Label>
-              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter name" />
-            </div>
-            <div>
-              <Label htmlFor="phone">Phone Number</Label>
-              <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Enter phone number" />
-            </div>
+
             <div>
               <Label htmlFor="rank">Rank</Label>
               <RankCombobox
@@ -244,15 +239,20 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
                 selectedRank={rank}
               />
             </div>
-
+            <div>
+              <Label htmlFor="name">Name</Label>
+              <Input id="name" value={name} onChange={(e) => setName(e.target.value.toUpperCase())} placeholder="Enter name" />
+            </div>
+            <div>
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Enter phone number" />
+            </div>
+            
             <div className="flex items-center space-x-2">
               <Checkbox id="remember" checked={rememberDetails} onCheckedChange={(v: any) => setRememberDetails(v)} />
               <Label htmlFor="remember">Remember my details</Label>
             </div>
 
-            <Button onClick={handleResetUserFields} variant="secondary" className="w-full">
-              Reset User Fields
-            </Button>
             <div>
               <Label htmlFor="action-select">Action</Label>
               <Select onValueChange={(value) => setAction(value as 'sign-in' | 'sign-out')} value={action}>
@@ -267,6 +267,12 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
             </div>
             <Button onClick={handleSubmit} className="w-full">
               Submit
+            </Button>
+
+            <hr></hr>
+
+            <Button onClick={handleResetUserFields} variant="destructive" className="w-full">
+              Reset User Fields
             </Button>
           </div>
         )}
