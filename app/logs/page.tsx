@@ -7,6 +7,12 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { subscribeToLogs, type ActivityLog } from "@/lib/logging-service"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { CalendarIcon } from "lucide-react"
+import { Calendar } from "@/components/ui/calendar"
+import { format } from "date-fns"
+import { DateRange } from "react-day-picker"
+import { Button } from "@/components/ui/button"
 
 export default function LogsPage() {
   const [logs, setLogs] = useState<ActivityLog[]>([])
@@ -15,6 +21,7 @@ export default function LogsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [companyFilter, setCompanyFilter] = useState("all")
   const [actionFilter, setActionFilter] = useState("all")
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
 
   useEffect(() => {
     const unsubscribe = subscribeToLogs((logsData) => {
@@ -27,11 +34,11 @@ export default function LogsPage() {
 
   useEffect(() => {
     filterLogs()
-  }, [logs, searchTerm, companyFilter, actionFilter])
+  }, [logs, searchTerm, companyFilter, actionFilter, dateRange])
 
   const filterLogs = () => {
     let filtered = logs
-
+  
     // Search filter
     if (searchTerm) {
       filtered = filtered.filter(
@@ -45,15 +52,24 @@ export default function LogsPage() {
           log.number.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
-
+  
     // Company filter
     if (companyFilter !== "all") {
       filtered = filtered.filter((log) => log.company === companyFilter)
     }
-
+  
     // Action filter
     if (actionFilter !== "all") {
       filtered = filtered.filter((log) => log.action === actionFilter)
+    }
+  
+    // Date range filter
+    if (dateRange?.from && dateRange?.to) {
+      filtered = filtered.filter(
+        (log) =>
+          log.timestamp >= dateRange.from! &&
+          log.timestamp <= new Date(dateRange.to!.getTime() + 24 * 60 * 60 * 1000 - 1) // include full "to" day
+      )
     }
 
     setFilteredLogs(filtered)
@@ -68,6 +84,9 @@ export default function LogsPage() {
       </div>
     )
   }
+
+  const isFilterActive =
+  searchTerm !== "" || companyFilter !== "all" || actionFilter !== "all" || (dateRange?.from && dateRange?.to)
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 min-h-screen bg-neutral-800">
@@ -136,6 +155,48 @@ export default function LogsPage() {
                 <SelectItem value="sign-out">Sign-out</SelectItem>
               </SelectContent>
             </Select>
+
+            <Popover>
+              <PopoverTrigger asChild>
+              <button className="flex items-center justify-between w-full rounded-md border px-3 py-2 text-sm">
+                  {dateRange?.from ? (
+                    dateRange?.to ? (
+                      <>
+                        {format(dateRange.from, "LLL dd, y")} - {format(dateRange.to, "LLL dd, y")}
+                      </>
+                    ) : (
+                      format(dateRange.from, "LLL dd, y")
+                    )
+                  ) : (
+                    <span>Select date range</span>
+                  )}
+                  <CalendarIcon className="ml-2 h-4 w-4 opacity-50" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="range"
+                  selected={dateRange}
+                  onSelect={setDateRange}
+                  numberOfMonths={2}
+                />
+              </PopoverContent>
+            </Popover>
+
+            {/* {isFilterActive && (
+                <Button
+                  className="px-3 py-2 mt-2 col-span-full md:col-auto"
+                  variant={"destructive"}
+                  onClick={() => {
+                    setSearchTerm("")
+                    setCompanyFilter("all")
+                    setActionFilter("all")
+                    setDateRange(undefined)
+                  }}
+                >
+                  Clear Filters
+                </Button>
+              )} */}
           </div>
         </CardContent>
       </Card>
@@ -157,7 +218,7 @@ export default function LogsPage() {
                   <TableHead>Location</TableHead>
                   <TableHead>Key No</TableHead>
                   <TableHead>Barcode</TableHead>
-                  <TableHead>Drawn Out By</TableHead>
+                  <TableHead>Action By</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

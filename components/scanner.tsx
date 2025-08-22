@@ -10,6 +10,7 @@ import type ScanbotSDK from "scanbot-web-sdk/ui";
 import { Input } from './ui/input';
 import { Checkbox } from './ui/checkbox';
 import RankCombobox from './rank-dropdown';
+import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 
 interface BarcodeScannerProps {
   onSubmit: (nric: string, itemBarcode: string, action: "sign-in" | "sign-out", rank: string, name: string, number: string) => void
@@ -162,6 +163,7 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
         localStorage.setItem("scanner_name", name);
       }
       onSubmit(nricResult, itemBarcode, action, rank, name, phone);
+      setRememberDetails(false)
       // Reset scanner after submit
       handleReset()
     }
@@ -170,9 +172,9 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
   return (
     <Card className={cn(
       "w-[350px] sm:w-[450px] md:w-[450px] lg:w-[450px] xl:w-[450px]",
-      "max-w-[90%]"
+      // "max-w-[90%]"
     )}>
-      <CardContent className="flex flex-col space-y-4 pt-6">
+      <CardContent className="flex flex-col space-y-4 ">
 
         {/* --- Main Action Buttons --- */}
         {!nricResult && !scanning && (
@@ -192,9 +194,6 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
             <p className='text-sm font-medium text-center mb-2'>
               {scanStep === 'nric' ? 'Scan NRIC Barcode' : 'Scan Key Barcode'}
             </p>
-            <div className="relative overflow-hidden rounded-md border">
-              <video id="video" className="w-full aspect-video" style={{ objectFit: 'cover' }} />
-            </div>
             {nricResult && scanStep === 'item' && (
               <div className='flex flex-col items-center mt-2'>
                 <p className="text-xs text-muted-foreground">Scanned NRIC: {nricResult}</p>
@@ -208,21 +207,23 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
 
         {/* --- RESULTS DISPLAY & POST-SCAN ACTIONS --- */}
         {nricResult && !scanning && (
-          <div className="rounded-md bg-muted p-4 space-y-3">
-            <h4 className='font-semibold'>Scan Complete</h4>
-            <div>
-              <Label>NRIC</Label>
-              <p className="text-lg font-mono">{nricResult}</p>
-            </div>
-            {itemBarcode && (
+          <div>
+            <h1 className='font-semibold ml-1'>Scan Complete</h1>
+            <div className="rounded-md bg-muted p-4 space-y-3">
               <div>
-                <Label>Key Barcode</Label>
-                <p className="text-lg font-mono">{itemBarcode}</p>
+                <Label>NRIC</Label>
+                <p className="text-lg font-mono">{nricResult}</p>
               </div>
-            )}
-            <div className="flex flex-col space-y-2 pt-2 border-t">
-              <Button onClick={startScan}>Start New Scan (Reset All)</Button>
-              <Button onClick={handleRescanItem} variant="outline">Scan Item Again</Button>
+              {itemBarcode && (
+                <div>
+                  <Label>Key Barcode</Label>
+                  <p className="text-lg font-mono">{itemBarcode}</p>
+                </div>
+              )}
+              <div className="flex flex-col space-y-2 pt-2 border-t">
+                <Button onClick={startScan}>Start New Scan (Reset All)</Button>
+                <Button onClick={handleRescanItem} variant="outline">Scan Item Again</Button>
+              </div>
             </div>
           </div>
         )}
@@ -230,42 +231,56 @@ const BarcodeScanner = ({ onSubmit }: BarcodeScannerProps) => {
         {/* --- FINAL SUBMIT FORM --- */}
         {nricResult && itemBarcode && (
           
-          <div className="space-y-4 border-t pt-4">
+          <div className="space-y-2 border-t pt-4">
 
-            <div>
+            <div className="space-y-1">
               <Label htmlFor="rank">Rank</Label>
               <RankCombobox
                 onRankSelect={setRank}
                 selectedRank={rank}
               />
             </div>
-            <div>
+            <div className="space-y-1">
               <Label htmlFor="name">Name</Label>
               <Input id="name" value={name} onChange={(e) => setName(e.target.value.toUpperCase())} placeholder="Enter name" />
             </div>
-            <div>
+            <div className="space-y-1">
               <Label htmlFor="phone">Phone Number</Label>
-              <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Enter phone number" />
+              <Input id="phone" type='number' value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Enter phone number" />
             </div>
             
-            <div className="flex items-center space-x-2">
-              <Checkbox id="remember" checked={rememberDetails} onCheckedChange={(v: any) => setRememberDetails(v)} />
-              <Label htmlFor="remember">Remember my details</Label>
+            <div className="flex flex-col space-y-1">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="remember"
+                  checked={rememberDetails}
+                  onCheckedChange={(v: any) => setRememberDetails(v)}
+                />
+                <Label htmlFor="remember">Remember my details</Label>
+              </div>
+              <p className="text-xs text-neutral-400">
+                Your details will be saved on this device for faster logging next time.
+              </p>
             </div>
 
             <div>
-              <Label htmlFor="action-select">Action</Label>
-              <Select onValueChange={(value) => setAction(value as 'sign-in' | 'sign-out')} value={action}>
-                <SelectTrigger className="w-full mt-1">
-                  <SelectValue placeholder="Select Action" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="sign-in">Sign Key In</SelectItem>
-                  <SelectItem value="sign-out">Sign Key Out</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label>Action</Label>
+              <RadioGroup
+                className="mt-2 space-y-[-2]"
+                value={action}
+                onValueChange={(value) => setAction(value as 'sign-in' | 'sign-out')}
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem id="sign-in" value="sign-in" />
+                  <Label htmlFor="sign-in">Sign Key In</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem id="sign-out" value="sign-out" />
+                  <Label htmlFor="sign-out">Sign Key Out</Label>
+                </div>
+              </RadioGroup>
             </div>
-            <Button onClick={handleSubmit} className="w-full">
+            <Button onClick={handleSubmit} className="w-full" disabled={!name || !rank || !phone}>
               Submit
             </Button>
 
