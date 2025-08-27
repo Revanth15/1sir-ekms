@@ -236,10 +236,18 @@ export default function LogsPage() {
                     <TableCell>
                       <Badge
                         className={
-                          log.action === "sign-out" ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"
+                          log.action === "sign-out"
+                            ? "bg-red-100 text-red-800"
+                            : log.action === "close-book"
+                            ? "bg-yellow-200 text-gray-800"
+                            : "bg-green-100 text-green-800"
                         }
                       >
-                        {log.action === "sign-out" ? "OUT" : "IN"}
+                        {log.action === "sign-out"
+                          ? "KEY SIGNED OUT"
+                          : log.action === "close-book"
+                          ? "BOOK CLOSED"
+                          : "KEY SIGNED IN"}
                       </Badge>
                     </TableCell>
                     <TableCell className="font-medium">{log.company}</TableCell>

@@ -10,6 +10,19 @@ import type { SavedBarcode } from "@/lib/barcode-service"
 import { toast } from "sonner"
 import { onSnapshot, collection, query } from "firebase/firestore"
 import { db } from "@/lib/firebase"
+import { Button } from "@/components/ui/button"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { logActivity } from "@/lib/logging-service"
 
 export default function DashboardPage() {
   const [barcodes, setBarcodes] = useState<SavedBarcode[]>([])
@@ -18,6 +31,18 @@ export default function DashboardPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [companyFilter, setCompanyFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [currentTime, setCurrentTime] = useState(new Date())
+
+  useEffect(() => {
+    if (!dialogOpen) return
+
+    const interval = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [dialogOpen])
 
   useEffect(() => {
     const q = query(collection(db, "barcodes"))
@@ -91,6 +116,29 @@ export default function DashboardPage() {
   }
 
   const companies = Array.from(new Set(barcodes.map((b) => b.company)))
+
+  const handleCloseBook = async () => {
+    try {
+      await logActivity({
+        maskedNric: "-",
+        barcodeCode: "-",
+        company: "-",
+        location: "-",
+        keyNo: "-",
+        action: "close-book",
+        rank: "-",
+        name: "-",
+        number: "-",
+        timestamp: new Date(),
+      })
+
+      toast.success("Book successfully closed for today.")
+    } catch (error) {
+      console.error("Failed to close book:", error)
+      toast.error("Failed to close book")
+    }
+  }
+
 
   if (loading) {
     return (
@@ -171,6 +219,32 @@ export default function DashboardPage() {
                 <SelectItem value="drawn">Drawn Out</SelectItem>
               </SelectContent>
             </Select>
+            <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button className="px-3 py-2 mt-2 col-span-full md:col-auto" variant="warn">
+                  Close Book
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Close Book</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to close the book for today as of 
+                    <strong>
+                      <time dateTime={currentTime.toISOString()}>
+                        {" " + currentTime.toLocaleDateString()} {currentTime.toLocaleTimeString()}?
+                      </time>
+                    </strong> <br />
+                    Once closed, it cannot be opened again. <br />
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleCloseBook}>Confirm</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
           </div>
         </CardContent>
       </Card>

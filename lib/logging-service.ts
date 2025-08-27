@@ -8,7 +8,7 @@ export interface ActivityLog {
   company: string
   location: string
   keyNo: string
-  action: "sign-in" | "sign-out"
+  action: "sign-in" | "sign-out" | "close-book"
   rank: string
   name: string
   number: string
